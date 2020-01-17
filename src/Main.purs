@@ -11,6 +11,9 @@ import Text.Parsing.StringParser (runParser)
 main :: Effect Unit
 main = do
   getResult $ runParser simpleChar "a>>>>+++"
+  getResult $ runParser simpleChar ">>>>+++"
+  getResult $ runParser simpleChar ">>>>+++"
+  getResult $ runParser simpleChar ">>>>+++"
   where
     getResult (Right r) = log "success!"
     getResult (Left r)  = log "fail!"
