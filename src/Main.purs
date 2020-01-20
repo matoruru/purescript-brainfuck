@@ -7,7 +7,11 @@ import Effect (Effect)
 import Effect.Console (logShow)
 
 main :: Effect Unit
-main = logShow $ parse """
+main = do
+  testbf
+
+testbf :: Effect Unit
+testbf = logShow $ parse """
  1 +++++ +++               Set Cell #0 to 8
  2 [
  3     >++++               Add 4 to Cell #1; this will always set Cell #1 to 4
