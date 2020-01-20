@@ -1,59 +1,49 @@
-module Brainfuck.Parser where
+module Brainfuck.Parser
+  ( parser
+  , parse
+  ) where
 
-import Prelude
+import Prelude hiding (between)
 
+import Brainfuck.Type (BF, Op(..))
 import Control.Alt ((<|>))
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
-import Data.String (Pattern(..))
-import Data.String.CodePoints (indexOf', length)
-import Effect.Exception (Error, error)
-import Text.Parsing.Parser.Combinators (between)
-import Text.Parsing.Parser.Token (space)
-import Text.Parsing.StringParser (ParseError(..), Parser(..))
-import Text.Parsing.StringParser.CodePoints (skipSpaces, string)
-import Text.Parsing.StringParser.Combinators (sepEndBy)
+import Control.Lazy (fix)
+import Data.Either (Either)
+import Data.List (many)
+import Text.Parsing.Parser (ParseError, Parser, runParser)
+import Text.Parsing.Parser.Combinators (between, skipMany)
+import Text.Parsing.Parser.String (char, eof, noneOf, skipSpaces)
 
-data Op
-  = IncP
-  | DecP
-  | IncV
-  | DecV
-  | Put
-  | Get
-  | Loop (Array Op)
+parse :: String -> Either ParseError BF
+parse = flip runParser parser
 
-type Program = Array Op
+parser :: Parser String BF
+parser = program <* eof
 
-program :: Parser Program
-program = do
-  --space
-  sepEndBy operation skipSpaces
+program :: Parser String BF
+program = fix \_ -> do
+  skipComment
+  result <- many do
+              skipComment
+              result <- op
+              skipComment
+              pure result
+  skipComment
+  pure result
 
-operation :: Parser Op
-operation = simpleOp <|> loop
+op :: Parser String Op
+op = pure Next  <$> char '>'
+ <|> pure Prev  <$> char '<'
+ <|> pure Inc   <$> char '+'
+ <|> pure Dec   <$> char '-'
+ <|> pure Print <$> char '.'
+ <|> pure Read  <$> char ','
+ <|> fix \_ -> loop
 
-simpleChar :: Parser String
-simpleChar = string ">" <|>
-             string "<" <|>
-             string "+" <|>
-             string "-" <|>
-             string "." <|>
-             string ","
+loop :: Parser String Op
+loop = Loop <$> between (char '[') (char ']') (fix \_ -> program)
 
-simpleOp :: Parser Op
-simpleOp = build <$> simpleChar
-  where
-    build ">" = IncP
-    build "<" = DecP
-    build "+" = IncV
-    build "-" = DecV
-    build "." = Put
-    build  _  = Get
-
-loop :: Parser Op
-loop = Loop <$> between (string "[") (string "]") program
-
---
---loop :: Parser String
---loop = between (string "(") (string ")") parse
+skipComment :: Parser String Unit
+skipComment = do
+  skipSpaces
+  skipMany $ noneOf ['>', '<', '+', '-', '.', ',', '[', ']']
