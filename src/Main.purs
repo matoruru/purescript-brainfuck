@@ -2,18 +2,17 @@ module Main where
 
 import Prelude
 
-import Brainfuck.Eval (eval)
+import Brainfuck (Brainfuck)
+import Brainfuck.Eval (run)
 import Brainfuck.Parser (parse)
 import Brainfuck.Type (Cell(..))
 import Effect (Effect)
 import Effect.Console (logShow)
+import PSCI.Support (eval)
 
 main :: Effect Unit
 main = do
-  eval
-
-testbf :: Effect Unit
-testbf = logShow $ parse """
+  run """
  1 +++++ +++               Set Cell #0 to 8
  2 [
  3     >++++               Add 4 to Cell #1; this will always set Cell #1 to 4

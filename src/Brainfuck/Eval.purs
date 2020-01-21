@@ -2,7 +2,7 @@ module Brainfuck.Eval where
 
 import Prelude
 
-import Brainfuck (parse)
+import Brainfuck (Brainfuck, parse)
 import Brainfuck.Type (Cell, Op(..), unwrap, wrap)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.State (State, modify_, put, runState)
@@ -12,7 +12,7 @@ import Data.Either (Either(..))
 import Data.Foldable (foldr)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
-import Data.List (List)
+import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (singleton)
 import Data.Tuple (Tuple(..))
@@ -53,9 +53,9 @@ newtype Machine = Machine
   }
 
 instance showMachine :: Show Machine where
-  show (Machine m) = "(Machine  { display: " <> "\""<> m.display <> "\""
-                           <>  ", tape: "    <> show m.tape
-                           <> " })"
+  show (Machine m) = "(Machine { display: " <> "\""<> m.display <> "\""
+                          <>  ", tape: "    <> show m.tape
+                          <> " })"
 
 newtype Tape = Tape
   { prev :: Array Cell
@@ -107,21 +107,20 @@ exec = case _ of
                             }
             }
   Read    -> modify_ identity
-  Loop bf -> modify_ identity
+  Loop bf -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+    if unwrap t.curr /= 0
+    then Machine m # eval bf
+    else Machine m
 
 init :: Machine
 init = Machine { display: mempty, tape: Tape { prev: [], curr: wrap 0, next: [] } }
 
-test :: Op -> State Machine Unit
-test = exec
+eval :: Brainfuck -> Machine -> Machine
+eval Nil   machine = machine
+eval (h:t) machine = case runState (exec h) machine of
+                       Tuple _ next -> eval t next
 
-fromOpList oplist = foldr
-
---eval :: String -> Effect Unit
---eval = parse >>> case _ of
---  Left  l -> logShow l
---  Right r ->
- -- case runState test init of
- -- (Tuple value state) -> do
- --   log $ "state: " <> (show state)
- --   log $ "value: " <> (show value)
+run :: String -> Effect Unit
+run = parse >>> case _ of
+  Left  l -> logShow l
+  Right r -> logShow $ eval r init
