@@ -1,25 +1,127 @@
-module Eval where
+module Brainfuck.Eval where
 
 import Prelude
 
+import Brainfuck (parse)
+import Brainfuck.Type (Cell, Op(..), unwrap, wrap)
+import Control.Monad.Error.Class (throwError)
 import Control.Monad.State (State, modify_, put, runState)
+import Data.Array (drop, head, last)
+import Data.Char as Char
+import Data.Either (Either(..))
+import Data.Foldable (foldr)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
+import Data.List (List)
+import Data.Maybe (Maybe(..))
+import Data.String.CodeUnits (singleton)
+import Data.Tuple (Tuple(..))
+import Effect (Effect)
+import Effect.Console (log, logShow)
 
-newtype Tape = Tape
-  { prev :: Array Int
-  , curr :: Int
-  , next :: Array Int
+incCell :: Cell -> Cell
+incCell = wrap <<< (_ + 1) <<< unwrap
+
+decCell :: Cell -> Cell
+decCell = wrap <<< (_ - 1) <<< unwrap
+
+getNext :: Array Cell -> Cell
+getNext = head >>> case _ of
+  Nothing -> wrap 0
+  Just v  -> v
+
+-- getPrev :: Array Cell -> Either String Cell
+-- getPrev = last >>> case _ of
+--   Nothing -> Left "[Brainfuck.Eval.getPrev]: Out of range!"
+--   Just c  -> Right $ Cell v
+getPrev :: Array Cell -> Cell
+getPrev = last >>> case _ of
+  Nothing -> wrap 0
+  Just c  -> c
+
+fromCharCode :: Int -> String
+fromCharCode = Char.fromCharCode >>> case _ of
+  Nothing -> mempty
+  Just c  -> singleton c
+
+cellToString :: Cell -> String
+cellToString = fromCharCode <<< unwrap
+
+newtype Machine = Machine
+  { display :: String
+  , tape    :: Tape
   }
 
-inc :: Tape -> State Tape Unit
-inc (Tape t) = put $ Tape { prev: [], curr: 0, next: [] }
-  where
-    newprev = tape.prev
-    newprev = tape.prev
+instance showMachine :: Show Machine where
+  show (Machine m) = "(Machine  { display: " <> "\""<> m.display <> "\""
+                           <>  ", tape: "    <> show m.tape
+                           <> " })"
 
-test :: State Tape Tape
-test = do
-  inc
-  inc
+newtype Tape = Tape
+  { prev :: Array Cell
+  , curr :: Cell
+  , next :: Array Cell
+  }
 
-eval :: State Tape Tape
-eval = runState test 0
+instance showTape :: Show Tape where
+  show (Tape t) = "(Tape { prev: " <> show t.prev
+                    <>  ", curr: " <> show t.curr
+                    <>  ", next: " <> show t.next
+                    <> " })"
+
+exec :: Op -> State Machine Unit
+exec = case _ of
+  Next    -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+    Machine { display: m.display
+            , tape   : Tape { prev: t.prev <> [ t.curr ]
+                            , curr: t.next # getNext
+                            , next: t.next # drop 1
+                            }
+            }
+  Prev    -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+    Machine { display: m.display
+            , tape   : Tape { prev: t.prev <> [ t.curr ]
+                            , curr: t.next # getNext
+                            , next: t.next # drop 1
+                            }
+            }
+  Inc     -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+    Machine { display: m.display
+            , tape   : Tape { prev: t.prev
+                            , curr: t.curr # incCell
+                            , next: t.next
+                            }
+            }
+  Dec     -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+    Machine { display: m.display
+            , tape   : Tape { prev: t.prev
+                            , curr: t.curr # decCell
+                            , next: t.next
+                            }
+            }
+  Print   -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+    Machine { display: m.display <> cellToString t.curr
+            , tape   : Tape { prev: t.prev
+                            , curr: t.curr
+                            , next: t.next
+                            }
+            }
+  Read    -> modify_ identity
+  Loop bf -> modify_ identity
+
+init :: Machine
+init = Machine { display: mempty, tape: Tape { prev: [], curr: wrap 0, next: [] } }
+
+test :: Op -> State Machine Unit
+test = exec
+
+fromOpList oplist = foldr
+
+--eval :: String -> Effect Unit
+--eval = parse >>> case _ of
+--  Left  l -> logShow l
+--  Right r ->
+ -- case runState test init of
+ -- (Tuple value state) -> do
+ --   log $ "state: " <> (show state)
+ --   log $ "value: " <> (show value)

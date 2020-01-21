@@ -1,6 +1,6 @@
 module Brainfuck
-  ( module Brainfuck
+  ( module BF
   ) where
 
-import Brainfuck.Parser ( parse ) as Brainfuck
-import Brainfuck.Type ( BF, Op(..) )  as Brainfuck
+import Brainfuck.Parser ( parse ) as BF
+import Brainfuck.Type ( Brainfuck, Op(..) )  as BF

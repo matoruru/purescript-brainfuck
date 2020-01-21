@@ -2,13 +2,15 @@ module Main where
 
 import Prelude
 
+import Brainfuck.Eval (eval)
 import Brainfuck.Parser (parse)
+import Brainfuck.Type (Cell(..))
 import Effect (Effect)
 import Effect.Console (logShow)
 
 main :: Effect Unit
 main = do
-  testbf
+  eval
 
 testbf :: Effect Unit
 testbf = logShow $ parse """

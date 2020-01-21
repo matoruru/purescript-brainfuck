@@ -5,7 +5,7 @@ module Brainfuck.Parser
 
 import Prelude hiding (between)
 
-import Brainfuck.Type (BF, Op(..))
+import Brainfuck.Type (Brainfuck, Op(..))
 import Control.Alt ((<|>))
 import Control.Lazy (fix)
 import Data.Either (Either)
@@ -14,13 +14,13 @@ import Text.Parsing.Parser (ParseError, Parser, runParser)
 import Text.Parsing.Parser.Combinators (between, skipMany)
 import Text.Parsing.Parser.String (char, eof, noneOf, skipSpaces)
 
-parse :: String -> Either ParseError BF
+parse :: String -> Either ParseError Brainfuck
 parse = flip runParser parser
 
-parser :: Parser String BF
+parser :: Parser String Brainfuck
 parser = program <* eof
 
-program :: Parser String BF
+program :: Parser String Brainfuck
 program = fix \_ -> do
   skipComment
   result <- many do
