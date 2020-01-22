@@ -6,7 +6,7 @@ import Brainfuck (Brainfuck, parse)
 import Brainfuck.Type (Cell, Op(..), unwrap, wrap)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.State (State, modify_, put, runState)
-import Data.Array (drop, head, last)
+import Data.Array (cons, drop, dropEnd, head, last, snoc)
 import Data.Char as Char
 import Data.Either (Either(..))
 import Data.Foldable (foldr)
@@ -71,46 +71,48 @@ instance showTape :: Show Tape where
 
 exec :: Op -> State Machine Unit
 exec = case _ of
-  Next    -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+  Next -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
     Machine { display: m.display
-            , tape   : Tape { prev: t.prev <> [ t.curr ]
+            , tape   : Tape { prev: t.prev `snoc` t.curr
                             , curr: t.next # getNext
                             , next: t.next # drop 1
                             }
             }
-  Prev    -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+  Prev -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
     Machine { display: m.display
-            , tape   : Tape { prev: t.prev <> [ t.curr ]
-                            , curr: t.next # getNext
-                            , next: t.next # drop 1
+            , tape   : Tape { prev: t.prev # dropEnd 1
+                            , curr: t.prev # getPrev
+                            , next: t.next `flip cons` t.curr
                             }
             }
-  Inc     -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+  Inc -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
     Machine { display: m.display
             , tape   : Tape { prev: t.prev
                             , curr: t.curr # incCell
                             , next: t.next
                             }
             }
-  Dec     -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+  Dec -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
     Machine { display: m.display
             , tape   : Tape { prev: t.prev
                             , curr: t.curr # decCell
                             , next: t.next
                             }
             }
-  Print   -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
+  Print -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
     Machine { display: m.display <> cellToString t.curr
             , tape   : Tape { prev: t.prev
                             , curr: t.curr
                             , next: t.next
                             }
             }
-  Read    -> modify_ identity
-  Loop bf -> modify_ \(Machine m) -> m.tape # \(Tape t) -> do
-    if unwrap t.curr /= 0
-    then Machine m # eval bf
-    else Machine m
+  Read -> modify_ identity
+
+  loop@(Loop bf) -> modify_ \mac@(Machine m) -> m.tape # \(Tape t) -> do
+    go t mac where
+      go t' mac'
+        | unwrap t'.curr == 0 = mac'
+        | otherwise           = eval (loop : Nil) $ eval bf mac'
 
 init :: Machine
 init = Machine { display: mempty, tape: Tape { prev: [], curr: wrap 0, next: [] } }
