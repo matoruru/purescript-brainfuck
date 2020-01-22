@@ -1,5 +1,6 @@
 module Brainfuck.Type
-  ( Brainfuck
+  ( BfString
+  , Brainfuck
   , Op(..)
   , Cell
   , unwrap
@@ -11,6 +12,8 @@ import Prelude
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Show (genericShow)
 import Data.List (List)
+
+type BfString = String
 
 type Brainfuck = List Op
 

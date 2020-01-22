@@ -3,21 +3,16 @@ module Brainfuck.Eval where
 import Prelude
 
 import Brainfuck (Brainfuck, parse)
-import Brainfuck.Type (Cell, Op(..), unwrap, wrap)
-import Control.Monad.Error.Class (throwError)
-import Control.Monad.State (State, modify_, put, runState)
+import Brainfuck.Type (Cell, Op(..), BfString, unwrap, wrap)
+import Control.Monad.State (State, modify_, runState)
 import Data.Array (cons, drop, dropEnd, head, last, snoc)
 import Data.Char as Char
 import Data.Either (Either(..))
-import Data.Foldable (foldr)
-import Data.Generic.Rep (class Generic)
-import Data.Generic.Rep.Show (genericShow)
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (singleton)
 import Data.Tuple (Tuple(..))
-import Effect (Effect)
-import Effect.Console (log, logShow)
+import Text.Parsing.Parser (ParseError)
 
 incCell :: Cell -> Cell
 incCell = wrap <<< (_ + 1) <<< unwrap
@@ -112,17 +107,25 @@ exec = case _ of
     go t mac where
       go t' mac'
         | unwrap t'.curr == 0 = mac'
-        | otherwise           = eval (loop : Nil) $ eval bf mac'
+        | otherwise           = evalImpl (loop : Nil) $ evalImpl bf mac'
 
 init :: Machine
 init = Machine { display: mempty, tape: Tape { prev: [], curr: wrap 0, next: [] } }
 
-eval :: Brainfuck -> Machine -> Machine
-eval Nil   machine = machine
-eval (h:t) machine = case runState (exec h) machine of
-                       Tuple _ next -> eval t next
+eval :: BfString -> Either ParseError Machine
+eval = flip evalWith init
 
-run :: String -> Effect Unit
+evalWith :: BfString -> Machine -> Either ParseError Machine
+evalWith bs machine = case parse bs of
+  Left  l -> Left l
+  Right r -> Right $ evalImpl r machine
+
+evalImpl :: Brainfuck -> Machine -> Machine
+evalImpl Nil   machine = machine
+evalImpl (h:t) machine = case runState (exec h) machine of
+                       Tuple _ next -> evalImpl t next
+
+run :: BfString -> Either ParseError String
 run = parse >>> case _ of
-  Left  l -> logShow l
-  Right r -> logShow $ eval r init
+  Left  l -> Left l
+  Right r -> Right $ evalImpl r init # \(Machine m) -> m.display
