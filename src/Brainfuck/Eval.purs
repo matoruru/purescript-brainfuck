@@ -4,14 +4,13 @@ import Prelude
 
 import Brainfuck (Brainfuck, parse)
 import Brainfuck.Type (Cell, Op(..), BfString, unwrap, wrap)
-import Control.Monad.State (State, modify_, runState)
+import Control.Monad.State (State, execState, modify_)
 import Data.Array (cons, drop, dropEnd, head, last, snoc)
 import Data.Char as Char
 import Data.Either (Either(..))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (singleton)
-import Data.Tuple (Tuple(..))
 import Text.Parsing.Parser (ParseError)
 
 incCell :: Cell -> Cell
@@ -122,8 +121,7 @@ evalWith bs machine = case parse bs of
 
 evalImpl :: Brainfuck -> Machine -> Machine
 evalImpl Nil   machine = machine
-evalImpl (h:t) machine = case runState (exec h) machine of
-                       Tuple _ next -> evalImpl t next
+evalImpl (h:t) machine = execState (exec h) machine # evalImpl t
 
 run :: BfString -> Either ParseError String
 run = parse >>> case _ of

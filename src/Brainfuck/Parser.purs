@@ -12,38 +12,29 @@ import Data.Either (Either)
 import Data.List (many)
 import Text.Parsing.Parser (ParseError, Parser, runParser)
 import Text.Parsing.Parser.Combinators (between, skipMany)
-import Text.Parsing.Parser.String (char, eof, noneOf, skipSpaces)
+import Text.Parsing.Parser.String (char, eof, noneOf)
 
 parse :: BfString -> Either ParseError Brainfuck
 parse = flip runParser parser
 
 parser :: Parser BfString Brainfuck
-parser = program <* eof
+parser = comment *> program <* comment <* eof
 
 program :: Parser BfString Brainfuck
-program = fix \_ -> do
-  skipComment
-  result <- many do
-              skipComment
-              result <- op
-              skipComment
-              pure result
-  skipComment
-  pure result
+program = fix \_ -> many $ between comment comment op
 
 op :: Parser BfString Op
-op = pure Next  <$> char '>'
+op = fix \_ ->
+     pure Next  <$> char '>'
  <|> pure Prev  <$> char '<'
  <|> pure Inc   <$> char '+'
  <|> pure Dec   <$> char '-'
  <|> pure Print <$> char '.'
  <|> pure Read  <$> char ','
- <|> fix \_ -> loop
+ <|> pure Loop  <*> loop '[' ']'
 
-loop :: Parser BfString Op
-loop = Loop <$> between (char '[') (char ']') (fix \_ -> program)
+loop :: Char -> Char -> Parser BfString Brainfuck
+loop l r = fix \_ -> between (char l) (char r) program
 
-skipComment :: Parser BfString Unit
-skipComment = do
-  skipSpaces
-  skipMany $ noneOf ['>', '<', '+', '-', '.', ',', '[', ']']
+comment :: Parser BfString Unit
+comment = skipMany $ noneOf ['>', '<', '+', '-', '.', ',', '[', ']']
