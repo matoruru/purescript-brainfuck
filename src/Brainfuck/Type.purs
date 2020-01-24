@@ -30,6 +30,8 @@ derive instance genericOp :: Generic Op _
 instance showOp :: Show Op where
   show s = genericShow s
 
+derive instance eqOp :: Eq Op
+
 data Cell = Cell Int
 
 derive instance genericCell :: Generic Cell _

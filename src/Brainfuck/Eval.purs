@@ -1,9 +1,16 @@
-module Brainfuck.Eval where
+module Brainfuck.Eval
+  ( Machine
+  , init
+  , eval
+  , evalWith
+  , evalImpl
+  , run
+  ) where
 
 import Prelude
 
-import Brainfuck (Brainfuck, parse)
-import Brainfuck.Type (Cell, Op(..), BfString, unwrap, wrap)
+import Brainfuck.Parser (parse)
+import Brainfuck.Type (Brainfuck, Cell, Op(..), BfString, unwrap, wrap)
 import Control.Monad.State (State, execState, modify_)
 import Data.Array (cons, drop, dropEnd, head, last, snoc)
 import Data.Char as Char
@@ -11,6 +18,7 @@ import Data.Either (Either(..))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (singleton)
+import Data.Traversable (traverse_)
 import Text.Parsing.Parser (ParseError)
 
 incCell :: Cell -> Cell
@@ -120,8 +128,7 @@ evalWith bs machine = case parse bs of
   Right r -> Right $ evalImpl r machine
 
 evalImpl :: Brainfuck -> Machine -> Machine
-evalImpl Nil   machine = machine
-evalImpl (h:t) machine = execState (exec h) machine # evalImpl t
+evalImpl bf machine = execState (traverse_ exec bf) machine
 
 run :: BfString -> Either ParseError String
 run = parse >>> case _ of
